@@ -1,0 +1,18 @@
+FROM datamechanics/spark:3.2.1-hadoop-3.3.1-java-11-scala-2.12-python-3.8-dm18
+
+USER root
+
+WORKDIR /opt/spark
+
+# Upgrade pip
+RUN pip install --upgrade pip
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Install JDBC Driver for PostgreSQL
+RUN curl -o /opt/spark/jars/postgresql-42.3.1.jar https://jdbc.postgresql.org/download/postgresql-42.3.1.jar
+
+# Default command (for Spark master/worker)
+CMD ["/bin/bash"]

@@ -1,0 +1,6 @@
+py4j
+pyspark==3.2.1
+jupyterlab
+pandas
+pyyaml
+delta-spark

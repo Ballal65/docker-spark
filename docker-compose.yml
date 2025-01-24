@@ -1,0 +1,61 @@
+services:   
+# Spark Master
+  spark-master:
+    build:
+      context: .
+      dockerfile: dockerfile.spark
+    container_name: spark-master
+    image: spark-master
+    ports:
+      - "8082:8080" # Spark Web UI mapped to host
+      - "7077:7077" # Spark master communication
+      - "6066:6066" # REST API for Spark jobs
+    volumes:
+      - /home/ompathare/extracted_data:/opt/spark/extracted_data
+      - /home/ompathare/transformed_data:/opt/spark/transformed_data
+      - ./jobs:/opt/spark/jobs
+      - ./notebooks:/opt/spark/notebooks
+    networks:
+      - containers_network
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master", "--host", "0.0.0.0"]
+
+# Spark Worker
+  spark-worker:
+    build:
+      context: .
+      dockerfile: dockerfile.spark
+    container_name: spark-worker
+    image: spark-worker
+    depends_on:
+      - spark-master
+    volumes:
+      - /home/ompathare/extracted_data:/opt/spark/extracted_data
+      - /home/ompathare/transformed_data:/opt/spark/transformed_data
+      - ./jobs:/opt/spark/jobs
+      - ./notebooks:/opt/spark/notebooks
+    networks:
+      - containers_network
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+   
+# Jupyter Notebook
+  jupyter-notebook:
+    build:
+      context: .
+      dockerfile: dockerfile.spark
+    container_name: spark-jupyter
+    image: spark-jupyter
+    ports:
+      - "8888:8888" # Jupyter Notebook
+    volumes:
+      - /home/ompathare/extracted_data:/opt/spark/extracted_data
+      - /home/ompathare/transformed_data:/opt/spark/transformed_data
+      - ./jobs:/opt/spark/jobs
+      - ./notebooks:/opt/spark/notebooks
+    networks:
+      - containers_network
+    command: ["jupyter-lab", "--allow-root", "--no-browser", "--ip=0.0.0.0"]
+
+
+networks:
+  containers_network:
+    external: true
