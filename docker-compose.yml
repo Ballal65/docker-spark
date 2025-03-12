@@ -1,5 +1,5 @@
-services:   
-# Spark Master
+services:
+  # Spark Master
   spark-master:
     build:
       context: .
@@ -7,9 +7,9 @@ services:
     container_name: spark-master
     image: spark-master
     ports:
-      - "8082:8080" # Spark Web UI mapped to host
-      - "7077:7077" # Spark master communication
-      - "6066:6066" # REST API for Spark jobs
+      - "8080:8080"  # Spark Master Web UI
+      - "7077:7077"  # Spark master communication
+      - "6066:6066"  # REST API for Spark jobs
     volumes:
       - /home/ompathare/extracted_data:/opt/spark/extracted_data
       - /home/ompathare/transformed_data:/opt/spark/transformed_data
@@ -19,7 +19,7 @@ services:
       - containers_network
     command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master", "--host", "0.0.0.0"]
 
-# Spark Worker
+  # Spark Worker 1
   spark-worker:
     build:
       context: .
@@ -28,6 +28,9 @@ services:
     image: spark-worker
     depends_on:
       - spark-master
+    environment:
+      - SPARK_WORKER_MEMORY=4g
+      - SPARK_WORKER_CORES=2
     volumes:
       - /home/ompathare/extracted_data:/opt/spark/extracted_data
       - /home/ompathare/transformed_data:/opt/spark/transformed_data
@@ -36,16 +39,41 @@ services:
     networks:
       - containers_network
     command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
-   
-# Jupyter Notebook
-  jupyter-notebook:
+    ports:
+      - "4041:4040"  # Worker 1 Spark UI on unique host port
+  #   command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+
+  # # Spark Worker 2
+  # spark-worker2:
+  #   build:
+  #     context: .
+  #     dockerfile: dockerfile.spark
+  #   container_name: spark-worker2
+  #   image: spark-worker
+  #   depends_on:
+  #     - spark-master
+  #   volumes:
+  #     - /home/ompathare/extracted_data:/opt/spark/extracted_data
+  #     - /home/ompathare/transformed_data:/opt/spark/transformed_data
+  #     - ./jobs:/opt/spark/jobs
+  #     - ./notebooks:/opt/spark/notebooks
+  #   networks:
+  #     - containers_network
+  #   command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+  #   ports:
+  #     - "8082:8082"  # Worker Web UI
+  #     - "4042:4040"  # Worker 2 Spark UI on unique host port
+
+  # Jupyter Notebook with Correct Port Mapping and Environment Variables
+  spark-jupyter:
     build:
       context: .
       dockerfile: dockerfile.spark
     container_name: spark-jupyter
     image: spark-jupyter
     ports:
-      - "8888:8888" # Jupyter Notebook
+      - "8888:8888"  # Jupyter Notebook
+      - "4040:4040"  # Spark UI for applications
     volumes:
       - /home/ompathare/extracted_data:/opt/spark/extracted_data
       - /home/ompathare/transformed_data:/opt/spark/transformed_data
@@ -54,8 +82,16 @@ services:
     networks:
       - containers_network
     command: ["jupyter-lab", "--allow-root", "--no-browser", "--ip=0.0.0.0"]
-
-
+    environment:
+      - SPARK_PUBLIC_DNS=157.245.104.57
+      - PYSPARK_SUBMIT_ARGS=--master spark://spark-master:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g --conf spark.executor.cores=2 --conf spark.executor.instances=2 --conf spark.default.parallelism=8 --conf spark.ui.port=4040 pyspark-shell
+      - SPARK_EXECUTOR_MEMORY=4g
+      - SPARK_DRIVER_MEMORY=2g
+      - SPARK_EXECUTOR_CORES=2
+      - SPARK_EXECUTOR_INSTANCES=2
+      - SPARK_DEFAULT_PARALLELISM=8
+      - SPARK_UI_PORT=4040
+      - PYSPARK_SUBMIT_ARGS=--master spark://spark-master:7077 pyspark-shell
 networks:
   containers_network:
     external: true
