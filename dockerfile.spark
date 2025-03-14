@@ -12,7 +12,7 @@ RUN pip install --upgrade pip
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Install JDBC Driver for PostgreSQL
 RUN curl -o /opt/spark/jars/postgresql-42.3.1.jar https://jdbc.postgresql.org/download/postgresql-42.3.1.jar

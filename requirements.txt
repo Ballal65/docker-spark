@@ -4,3 +4,4 @@ jupyterlab
 pandas
 pyyaml
 delta-spark
+confluent_kafka
