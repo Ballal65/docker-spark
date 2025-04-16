@@ -1,49 +1,46 @@
 from pyspark.sql import SparkSession
-import os
+from pyspark.sql.functions import *
 
-def main():
-    # Initialize SparkSession
-    print("Starting the Spark job...")
-    try:
-        print("Contents of /opt/")
-        print(os.listdir('/opt'))
-        print("Contents of /opt/airflow")
-        print(os.listdir('/opt/airflow'))
-        print("Contents of /opt/airflow/extracted_data:")
-        print(os.listdir('/opt/airflow/extracted_data'))
-        print("Contents of /opt/airflow/extracted_data/youtube_data:")
-        print(os.listdir('/opt/airflow/extracted_data/youtube_data'))
-    except Exception as e:
-        print(f"Error accessing directories: {e}")
-
-
-    #input_path = '/opt/airflow/extracted_data/youtube_data/jre_2025-01-22.csv'
-    input_path = '/opt/airflow/extracted_data/youtube_data/jre_data_2025-01-23.csv'
-    output_path = '/opt/airflow/transformed_data/youtube_data/jre_title.csv'
-
-    if not os.path.exists(input_path):
-        print(f"Input file {input_path} not found.")
-        return
-
-    spark = SparkSession.builder \
-    .appName("SimpleTransformation1") \
-    .config("spark.executor.extraJavaOptions", "--add-opens java.base/java.nio=ALL-UNNAMED") \
-    .config("spark.driver.extraJavaOptions", "--add-opens java.base/java.nio=ALL-UNNAMED") \
+# Create SparkSession
+spark = SparkSession.builder \
+    .appName("KafkaSparkBatch") \
+    .master("spark://spark-master:7077") \
+    .config("spark.jars", "/opt/spark/jars/spark-sql-kafka-0-10_2.12-3.2.1.jar,/opt/spark/jars/kafka-clients-3.2.1.jar") \
+    .config("spark.driver.extraClassPath", "/opt/spark/jars/spark-sql-kafka-0-10_2.12-3.2.1.jar:/opt/spark/jars/kafka-clients-3.2.1.jar") \
+    .config("spark.executor.extraClassPath", "/opt/spark/jars/spark-sql-kafka-0-10_2.12-3.2.1.jar:/opt/spark/jars/kafka-clients-3.2.1.jar") \
+    .config("spark.sql.shuffle.partitions", "2") \
     .getOrCreate()
 
-    try:
-        # Read the input file
-        print(f" \n \n \n \n \n \n Hello world {os.listdir()} \n \n \n \n ")
-        df = spark.read.csv(input_path, header=True, inferSchema=True)
+# Verify configuration
+print("Spark Version:", spark.version)
+print("Driver Extra Classpath:", spark.conf.get("spark.driver.extraClassPath"))
+print("Executor Extra Classpath:", spark.conf.get("spark.executor.extraClassPath"))
 
-        # Select a single column
-        output_df = df.select("Title")
-        pandas_df = output_df.toPandas()
-        pandas_df.to_csv(output_path, index=False)
-    except Exception as e:
-        print(f"Error occurred during Spark job execution: {e}")
-    finally:
-        spark.stop()
+# Read from Kafka
+kafka_df = spark \
+    .read \
+    .format("kafka") \
+    .option("kafka.bootstrap.servers", "kafka:9092") \
+    .option("subscribe", "AIDHOOSTATION") \
+    .option("startingOffsets", "earliest") \
+    .option("endingOffsets", "latest") \
+    .load()
 
-if __name__ == "__main__":
-    main()
+# Process data
+processed_df = kafka_df.select(
+    col("key").cast("string").alias("key"),
+    col("value").cast("string").alias("value"),
+    col("timestamp"),
+    col("partition"),
+    col("offset")
+)
+
+# Show results
+processed_df.show(truncate=False)
+
+# Optional: Save to CSV
+processed_df.write \
+    .mode("overwrite") \
+    .csv("/opt/spark/output/AIDHOOSTATION_batch_output")
+
+spark.stop()

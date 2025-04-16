@@ -83,7 +83,7 @@ services:
       - containers_network
     command: ["jupyter-lab", "--allow-root", "--no-browser", "--ip=0.0.0.0"]
     environment:
-      - SPARK_PUBLIC_DNS=157.245.104.57
+      - SPARK_PUBLIC_DNS=159.89.165.171
       - PYSPARK_SUBMIT_ARGS=--master spark://spark-master:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g --conf spark.executor.cores=2 --conf spark.executor.instances=2 --conf spark.default.parallelism=8 --conf spark.ui.port=4040 pyspark-shell
       - SPARK_EXECUTOR_MEMORY=4g
       - SPARK_DRIVER_MEMORY=2g

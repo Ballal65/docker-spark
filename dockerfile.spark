@@ -15,16 +15,18 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install JDBC Driver for PostgreSQL
-RUN curl -o /opt/spark/jars/postgresql-42.3.1.jar https://jdbc.postgresql.org/download/postgresql-42.3.1.jar
+RUN curl -o /opt/spark/jars/postgresql-42.3.1.jar \
+    https://jdbc.postgresql.org/download/postgresql-42.3.1.jar
 
-# Install Kafka Connector for Spark
+# Install Kafka Connector and Dependencies
 RUN curl -o /opt/spark/jars/spark-sql-kafka-0-10_2.12-3.2.1.jar \
-    https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.12/3.2.1/spark-sql-kafka-0-10_2.12-3.2.1.jar
+    https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.12/3.2.1/spark-sql-kafka-0-10_2.12-3.2.1.jar \
+ && curl -o /opt/spark/jars/kafka-clients-2.8.1.jar \
+    https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/2.8.1/kafka-clients-2.8.1.jar
 
-# Install Kafka Client Dependencies
-RUN curl -o /opt/spark/jars/kafka-clients-3.2.1.jar \
-    https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.2.1/kafka-clients-3.2.1.jar
-
+# Cleanup potential conflicts
+RUN rm -f /opt/spark/jars/spark-sql-kafka-0-10_2.12-3.5.1.jar \
+    && rm -f /opt/spark/jars/kafka-clients-3.5.1.jar
 
 # Default command (for Spark master/worker)
 CMD ["/bin/bash"]
